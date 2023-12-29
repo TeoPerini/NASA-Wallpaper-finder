@@ -1,0 +1,214 @@
+---
+import Layout from '../layouts/Layout.astro';
+// import test_image from "../../public/test_image.jpg";
+// import { Image } from 'astro:assets';
+
+
+---
+
+<Layout>
+	<h2>Astronomy Picture of the Day</h2>
+
+	<nav>
+		<input type="date" id="input_date">
+		<button id="button_load">Load image</button>
+		<button id="button_load_random">Load Random image</button>
+		<button id="button_download">Download image</button>
+	</nav>
+
+	<img src="" alt="image not loaded correctly :(" id="image">
+</Layout>
+
+<style>
+	h2 {
+		padding: 1em;
+	}
+
+	img {
+		width: 100%;
+		object-fit: contain;
+	}
+</style>
+
+<script defer>
+const API_KEY = "DEMO_KEY"
+
+/** @type {APODResponse | null} */
+let APODResponse = null
+
+const TODAY_DATE = new Date(Date.now())
+
+/**
+ * @param {Date} date 
+ * @returns {string}
+ */
+function formatDate(date) {
+	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+const EL_INPUT_DATE = document.getElementById("input_date");
+const EL_BUTTON_LOAD = document.getElementById("button_load");
+const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
+const EL_BUTTON_DOWNLOAD = document.getElementById("button_download");
+const EL_IMAGE = document.getElementById("image");
+
+EL_INPUT_DATE.setAttribute("max", formatDate(TODAY_DATE))
+EL_INPUT_DATE.setAttribute("value", formatDate(TODAY_DATE))
+
+
+EL_BUTTON_DOWNLOAD.onclick = (_) => {
+	/** @type {URL | null} */
+	let download_url = null
+
+	if(APODResponse == null) {
+		console.error("Error downloading image: APODResponse is null")
+		window.alert("Error downloading image: APODResponse is null")
+		return
+	}
+
+	if(APODResponse.hdurl != null) {
+		download_url = APODResponse.hdurl
+
+	} else if(APODResponse.url != null) {
+		download_url = APODResponse.url
+
+	} else {
+		console.error("Error downloading image: IMAGE_HDURL and IMAGE_URL are null")
+		window.alert("Error downloading image: IMAGE_HDURL and IMAGE_URL are null")
+		console.table(APODResponse)
+		return
+	}
+
+	if(download_url == undefined) {
+		console.log("WTF")
+		console.log(APODResponse.url)
+		console.log(APODResponse.hdurl)
+		console.log(download_url)
+	}
+
+	downloadImage(download_url)
+}
+
+EL_BUTTON_LOAD.onclick = (_) => preventSpam(loadImage())
+async function loadImage() {
+	const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${formatDate(new Date(EL_INPUT_DATE.value))}&thumbs=true`
+
+	const RESPONSE = await fetchFromAPOD(URL)
+	if(RESPONSE == null) return;
+
+	EL_IMAGE.src = RESPONSE.url
+	EL_IMAGE.alt = RESPONSE.title
+
+	EL_INPUT_DATE.setAttribute("value", RESPONSE.date)
+	APODResponse = RESPONSE
+}
+
+
+EL_BUTTON_LOAD_RANDOM.onclick = (_) => preventSpam(loadRandomImage())
+async function loadRandomImage() {
+	const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&count=1&thumbs=true`
+
+	const RESPONSE = await fetchFromAPOD(URL)
+	if(RESPONSE == null) return;
+
+	const RESPONSE_DATA = RESPONSE[0]
+	EL_IMAGE.src = RESPONSE_DATA.url
+	EL_IMAGE.alt = RESPONSE_DATA.title
+
+	EL_INPUT_DATE.setAttribute("value", RESPONSE_DATA.date)
+	APODResponse = RESPONSE_DATA
+}
+
+/**
+ * 
+ * @param {URL} URL 
+ * @returns {APODResponse | null}
+ */
+async function fetchFromAPOD(URL) {
+	const res_blob = await fetch(URL)
+
+	if(res_blob.ok) {
+		const RATE_LIMIT = res_blob.headers.get("x-ratelimit-limit")
+		const RATE_LIMIT_REMAINING = res_blob.headers.get("x-ratelimit-remaining")
+ 
+		console.info(`Requested image from APOD, limit [${RATE_LIMIT_REMAINING}/${RATE_LIMIT}]`)
+	}
+
+	const res_json = await res_blob.json()
+
+	if(res_json.error != null) {
+		console.error(`Error requesting to APOD API with url "${URL}"\nmessage: `, res_json.error.message)
+		window.alert(`Error requesting to APOD API with url "${URL}"\nmessage: `, res_json.error.message)
+		return null
+	}
+
+
+	const RESPONSE = res_json
+	console.table(RESPONSE)
+
+	return RESPONSE
+}
+
+/**
+ * 
+ * @param {URL} url 
+ * @param {string} fileName 
+ */
+async function downloadImage(url) {
+	const res_blob = await fetch(url, { method: 'get', mode: 'no-cors', referrerPolicy: 'no-referrer' })
+	if(!res_blob.ok) {
+		console.error("Error downloading image")
+		window.alert("Error downloading image")
+		return
+	} 
+
+	const blob = await res_blob.blob()
+	const HREF = URL.createObjectURL(blob);
+
+	const EL_A = document.createElement('a');
+	EL_A.setAttribute('download', url.split('/').pop());
+	EL_A.setAttribute('target', '_blank');
+	EL_A.setAttribute("href", HREF);
+	EL_A.click();
+
+	URL.revokeObjectURL(HREF);
+};
+
+/**
+ * 
+ * @param {Promise<void>} image_loader 
+ */
+function preventSpam(image_loader) {
+	EL_BUTTON_DOWNLOAD.setAttribute("disabled", "")
+	EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
+	EL_BUTTON_LOAD.setAttribute("disabled", "")
+
+	image_loader
+		.finally(_ => {
+			EL_BUTTON_DOWNLOAD.removeAttribute("disabled")
+			EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
+			EL_BUTTON_LOAD.removeAttribute("disabled")
+		})
+}
+
+/**
+ * @typedef {Object} APODResponse
+ * @prop {any} resource
+ * @prop {any} concept_tags
+ * 
+ * @prop {string?} title
+ * @prop {string?} date
+ *
+ * @prop {string?} url
+ * @prop {string?} hdurl
+ * 
+ * @prop {string?} media_type
+ * @prop {string?} explanation
+ * 
+ * @prop {any} concepts
+ * @prop {any} thumbnail_url
+ * 
+ * @prop {string?} copyright
+ * @prop {string?} service_version
+ */
+</script>

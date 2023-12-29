@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "astro-build.astro-vscode",
+        "dzhavat.css-flexbox-cheatsheet",
+        "pranaygp.vscode-css-peek",
+        "ecmel.vscode-html-css",
+        "zignd.html-css-class-completion",
+        "xabikos.javascriptsnippets"
+    ]
+}

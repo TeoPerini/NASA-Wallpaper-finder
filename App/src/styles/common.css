@@ -1,0 +1,56 @@
+body,
+html {
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    width: 100vw;
+
+    height: 100vh;
+    height: 100svh;
+
+    font-family: system-ui, sans-serif;
+
+    color: var(--fg-primary);
+    background: var(--bg-body-primary);
+}
+
+body {
+    width: 100%;
+    /* height: 100%; */
+}
+
+ul {
+    margin: .2em 0;
+}
+
+/* LINK Stuff */
+a {
+    text-decoration: underline;
+    padding: 0 .1em;
+}
+
+a:link, a:visited {
+    color: var(--fg-text-secondary);
+}
+
+a:hover {
+    text-decoration: none;
+
+    color: var(--bg-body-primary);
+    background-color: var(--fg-text-primary);
+}
+
+a:active { /* clicked link */
+    text-decoration: none;
+
+    color: var(--bg-body-tertiary);
+    background-color: var(--tint-primary);
+}
+
+/* SELECTION */
+*::selection {
+    color: var(--bg-body-primary);
+    background-color: var(--fg-text-primary);
+}

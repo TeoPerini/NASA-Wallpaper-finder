@@ -1,0 +1,26 @@
+:root {
+	/* ? COLORS */
+
+	/* foreground */
+	--fg-primary:		rgb(255, 255, 255);
+	--fg-secondary:		rgb(120, 138, 163);
+
+	--fg-text-primary:		rgb(217, 217, 217);
+	--fg-text-secondary:	rgb(130, 140, 153);
+
+	/* background */
+	--bg-body-primary:		#13151A;
+	--bg-body-secondary:	#13151A;
+	--bg-body-tertiary: 	#2b2a33;
+
+	/* tint */
+	--tint-primary:		rgb(252, 254, 189);
+
+
+	/* ? MATERIALS */
+
+	/* opacities */
+	--_material-thin: 0.2;
+	--_material-thick: 0.6;
+	--_material-regular: 1.0;
+}

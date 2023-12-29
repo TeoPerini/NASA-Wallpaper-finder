@@ -1,0 +1,31 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+    <section>
+        <h2>Why this?</h2>
+        <p> I wanted to use a couple of good APIs, but i couldn't find anything interesting </p>
+    </section>
+
+    <section>
+        <h2>The two APIs involved</h2>
+        <p>I choose to use both NASA APIs to fetch images:</p>
+            <ul>
+                <li><a href="https://github.com/nasa/apod-api" target="_blank">Astronomy Picture of the Day (APOD)</a></li>
+                <li><a href="https://github.com/corincerami/mars-photo-api" target="_blank">Mars Rover Photo API</a></li>
+            </ul>
+    </section>
+</Layout>
+<style>
+    section {
+        padding: 1em;
+
+    }
+
+    section > p {
+        max-width: 45ch;
+
+        margin: 0 0 .4em 0; 
+    }
+</style>

@@ -1,0 +1,24 @@
+:root {
+	--text-heading-large: 1.5rem;	/* ~105px */
+	--text-heading: 1.14rem;		/* ~80px */
+	--text-primary: 1rem;			/*  70px */
+	--text-secondary: 0.57rem;		/* ~40px */
+}
+
+p {
+    margin: 0;
+}
+
+h1 {
+    font-size: var(--text-heading-large);
+    margin: 0;
+}
+
+h2 {
+    font-size: var(--text-heading);
+    margin: 0 0 .2em 0;
+}
+
+code {
+	font-family: Menlo, monospace;
+}

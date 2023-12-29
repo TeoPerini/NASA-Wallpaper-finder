@@ -1,0 +1,48 @@
+---
+
+---
+<nav>
+	<h1>Wallpaper finder <code>&#60;3</code></h1>
+
+	<div class="page-links">
+		<a href="/">Home</a>
+		<a href="/APOD">APOD</a>
+		<a href="/MRP">MRP</a>
+	</div>
+</nav>
+<style>
+	nav {
+		position: sticky;
+		top: 0;
+		left: 0;
+
+		padding: .5em 1em;
+
+		background-color: var(--bg-body-tertiary);
+		
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		gap: .3em;
+	}
+	@media (max-width: 500px) {
+		nav {
+			flex-direction: column;
+		}
+	}
+
+	nav > h1 {
+		margin: 0;
+		white-space: nowrap;
+	}
+
+	nav > div.page-links {
+
+		display: flex;
+		align-self: center;
+		justify-content: center;
+		align-items: center;
+		gap: 1rem;
+	}
+</style>
