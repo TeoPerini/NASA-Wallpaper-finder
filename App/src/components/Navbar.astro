@@ -1,5 +1,14 @@
 ---
+enum Page {
+    HOME = "Home",
+    APOD = "APOD",
+    MRP  = "MRP"
+}
+interface Props {
+    highlightPage?: Page
+}
 
+const { highlightPage } = Astro.props
 ---
 <nav>
 	<h1>Wallpaper finder <code>&#60;3</code></h1>
@@ -10,6 +19,22 @@
 		<a href="/MRP">MRP</a>
 	</div>
 </nav>
+
+<script defer define:vars={{ highlightPage }}>
+    const EL_PAGE_LINKS_WRAPPER = document.querySelector("div.page-links") 
+    if(highlightPage == undefined) return;
+
+    const EL_PAGE_LINKS = EL_PAGE_LINKS_WRAPPER.children;
+    for(let i = 0; i < EL_PAGE_LINKS.length; i++) {
+        const EL_LINK = EL_PAGE_LINKS.item(i);
+        if(EL_LINK == null) continue;
+        console.log(`${EL_LINK.innerText} == ${highlightPage}`)
+        if(EL_LINK.innerText == highlightPage) {
+            EL_LINK.outerHTML = `<p>${highlightPage}</p>`
+        }
+    }
+</script>
+
 <style>
 	nav {
 		position: sticky;
@@ -45,4 +70,9 @@
 		align-items: center;
 		gap: 1rem;
 	}
+
+    nav > div.page-linnks > p {
+        text-decoration: none;
+        color: var(--fg-body-primary);
+    }
 </style>

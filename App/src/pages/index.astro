@@ -1,8 +1,14 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+enum Page {
+    HOME = "Home",
+    APOD = "APOD",
+    MRP  = "MRP"
+}
 ---
 
-<Layout>
+<Layout currentPage={Page.HOME}>
     <section>
         <h2>Why this?</h2>
         <p> I wanted to use a couple of good APIs, but i couldn't find anything interesting </p>

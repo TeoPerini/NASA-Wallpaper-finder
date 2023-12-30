@@ -5,11 +5,17 @@ import "../styles/calligraphy.css"
 
 import Navbar from "../components/Navbar.astro"
 
-// interface Props {
-// 	title: string;
-// }
+enum Page {
+    HOME = "Home",
+    APOD = "APOD",
+    MRP = "MRP"
+}
+interface Props {
+    currentPage: Page
+}
 
-// const { title } = Astro.props;
+const { currentPage } = Astro.props
+
 ---
 
 <!doctype html>
@@ -22,7 +28,7 @@ import Navbar from "../components/Navbar.astro"
 		<title>Wallpaper finder</title>
 	</head>
 	<body>
-		<Navbar />
+		<Navbar highlightPage={currentPage} />
 		<slot />
 	</body>
 </html>
