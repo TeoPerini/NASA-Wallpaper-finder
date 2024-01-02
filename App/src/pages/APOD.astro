@@ -1,82 +1,37 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { Page } from "../scripts/page_handler"
 
-enum Page {
-    HOME = "Home",
-    APOD = "APOD",
-    MRP  = "MRP"
-}
+import { NASA_API, type APODResponse } from '../scripts/NASA_API';
 
-const API_KEY: string = "DEMO_KEY"
+
 const TODAY_DATE: Date = new Date(Date.now())
+const TODAY_DATE_FORM: string = formatDate(TODAY_DATE)
 
 function formatDate(date: Date): string {
 	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }
 
-interface APODResponse {
-    resource?: any;
-    concept_tags?: any;
-
-    title: string;
-    date: string;
-    
-    url: string;
-    hdurl?: string;
-
-    media_type?: string;
-    explanation: string;
-
-    concepts?: any; 
-    thumbnail_url?: any 
-
-    copyright: string; 
-    service_version?: string; 
-}
-
-interface APODRequests {
-	limit: string | null,
-	remaining: string | null
-}
-
-let requestState: APODRequests = {
-	limit: "?",
-	remaining: "?"
-}
-
-async function fetchFromAPOD(URL: string): Promise<APODResponse | null> {
-	const res_blob = await fetch(URL)
-
-    requestState.limit = res_blob.headers.get("x-ratelimit-limit")
-    requestState.remaining = res_blob.headers.get("x-ratelimit-remaining")
-    console.info(`Requested image from APOD, limit [${requestState.remaining}/${requestState.limit}]`)
-
-	const res_json = await res_blob.json()
-	if(res_json.error != null) {
-		console.error(`Error requesting to APOD API with url "${URL}"\nmessage: `, res_json.error.message)
-		return null
-	}
-
-	return res_json
-}
-
-const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${formatDate(TODAY_DATE)}&thumbs=true`
-let server_response: APODResponse | null = await fetchFromAPOD(URL)
+const URL = NASA_API.shared.craftURL((api_key) => {
+    const date = formatDate(TODAY_DATE)
+    return `https://api.nasa.gov/planetary/apod?api_key=${api_key}&date=${date}&thumbs=true`
+})
+let server_response: APODResponse | null = await NASA_API.shared.fetchFromNASA(URL)
 ---
 
 <Layout currentPage={Page.APOD}>
 	<nav>
-		<p id="state">{requestState.remaining ?? "?"}/{requestState.limit ?? "?"}</p>
-		<input type="date" id="input_date" min="1995-06-16" value={formatDate(TODAY_DATE)} max={formatDate(TODAY_DATE)}>
+		<p id="state">{NASA_API.shared.getRequestString()}</p>
+		<input type="date" id="input_date" min="1995-06-16" value={TODAY_DATE_FORM} max={TODAY_DATE_FORM}>
 		<button id="button_load">Load image</button>
 		<button id="button_load_random">Load Random image</button>
 	</nav>
 
 	<article>
-		<img id="image" class="loading" src={server_response?.hdurl ?? server_response?.url ?? "not_found.jpg"} alt={server_response?.title ?? "Couldn't load image"}>
-        <p id="title">{server_response?.title != null ? `<b>Title:</b> ${server_response.title}` : ""}</p>
-        <p id="explanation">{server_response?.explanation != null ? `<b>Explanation:</b> ${server_response.explanation}` : ""}</p>
-        <p id="copyright">{server_response?.copyright != null ? `<b>Copyright:</b> ${server_response.copyright}` : ""}</p>
+		<img id="image" class="loading" src="" alt="">
+        <p id="title"></p>
+        <p id="explanation"></p>
+        <p id="copyright"></p>
 	</article>
 </Layout>
 
@@ -174,7 +129,10 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL)
 	}
 </style>
 
-<script defer define:vars={{TODAY_DATE, API_KEY, server_response, requestState}}>
+<script defer define:vars={server_response}>
+    import { formatDate } from "../scripts/utils"
+    import NASA_API from "../scripts/NASA_API"
+
     const EL_INPUT_DATE = document.getElementById("input_date");
     const EL_BUTTON_LOAD = document.getElementById("button_load");
     const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
@@ -195,8 +153,8 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL)
     function updateView(response) {
         console.log(`Updating view with: ${JSON.stringify(response)}`)
 
-        EL_REQUEST_STATE_P.innerText = `${requestState.remaining}/${requestState.limit}`
-        if(requestState.remaining <= 0) {
+        EL_REQUEST_STATE_P.innerText = NASA_API.shared.getRequestString()
+        if(NASA_API.shared.requestState.remaining <= 0) {
             console.error("Depleted requests, disabling buttons")
 
             EL_BUTTON_LOAD.setAttribute("disabled", "")
@@ -206,9 +164,7 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL)
             EL_IMAGE.classList.add("error")
             EL_REQUEST_STATE_P.classList.add("depleted")
 
-            setTimeout(() => {
-                window.alert("Depleted requests to API, retry in a bit :P")
-            }, 1000)
+            setTimeout(() => window.alert("Depleted requests to API, retry in a bit :P"), 1000)
         } else {
             console.info("Undepleted requests?, enabling buttons")
             EL_BUTTON_LOAD.removeAttribute("disabled")
@@ -232,6 +188,7 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL)
             return
         }
 
+        
         if(response.hdurl != null) {
             EL_IMAGE.src = response.hdurl
 
@@ -242,7 +199,7 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL)
             EL_IMAGE.src = response.url
 
         } else {
-            console.error("???? both hdurl and url are null ", response)
+            console.error("???? both hdurl, thumbnail_url and url are null", response)
         }
 
         EL_IMAGE.alt = response.title
@@ -264,13 +221,6 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL)
     let loaded_response = null
     updateView(server_response)
 
-    /**
-     * @param {Date} date 
-     * @returns {string}
-     */
-    function formatDate(date) {
-        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-    }
 
     EL_BUTTON_LOAD.onclick = (_) => preventSpam(loadImage())
     async function loadImage() {

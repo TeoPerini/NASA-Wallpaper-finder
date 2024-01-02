@@ -1,11 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { Page } from "../scripts/page_handler";
 
-enum Page {
-    HOME = "Home",
-    APOD = "APOD",
-    MRP  = "MRP"
-}
 ---
 
 <Layout currentPage={Page.HOME}>
