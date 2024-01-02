@@ -2,19 +2,31 @@
 	/* ? COLORS */
 
 	/* foreground */
-	--fg-primary:		rgb(255, 255, 255);
-	--fg-secondary:		rgb(120, 138, 163);
+	--fg-primary:			rgb(255, 255, 255);
+	--fg-secondary:			rgb(120, 138, 163);
+	--fg-secondary-thin:			rgba(120, 138, 163, var(--_material-thin));
 
-	--fg-text-primary:		rgb(217, 217, 217);
+	--fg-text-primary:		hsl(0, 0%, 85%);
 	--fg-text-secondary:	rgb(130, 140, 153);
 
 	/* background */
 	--bg-body-primary:		#13151A;
+
 	--bg-body-secondary:	#424244;
+	--bg-body-secondary-thin:	rgba(66, 66, 68, var(--_material-thin));
+
 	--bg-body-tertiary: 	#2b2a33;
 
+
 	/* tint */
-	--tint-primary:		rgb(252, 254, 189);
+	--tint-primary:			rgb(252, 254, 189);
+	--tint-primary-thin:	rgba(252, 254, 189, var(--_material-thin));
+
+	--tint-error:			rgb(140, 0, 0);
+	--tint-error-thin:		rgba(140, 0, 0, var(--_material-thin));
+	--tint-error-border:	hsl(0, 60%, 65%);
+
+	--tint-loading:			rgb(0, 140, 140);
 
 
 	/* ? MATERIALS */

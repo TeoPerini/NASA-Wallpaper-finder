@@ -28,7 +28,7 @@ const { highlightPage } = Astro.props
     for(let i = 0; i < EL_PAGE_LINKS.length; i++) {
         const EL_LINK = EL_PAGE_LINKS.item(i);
         if(EL_LINK == null) continue;
-        console.log(`${EL_LINK.innerText} == ${highlightPage}`)
+
         if(EL_LINK.innerText == highlightPage) {
             EL_LINK.outerHTML = `<p>${highlightPage}</p>`
         }
@@ -38,10 +38,12 @@ const { highlightPage } = Astro.props
 <style>
 	nav {
 		position: sticky;
+
+        height: 2em;
+		padding: .5em 1em;
+
 		top: 0;
 		left: 0;
-
-		padding: .5em 1em;
 
 		background-color: var(--bg-body-tertiary);
 		
@@ -50,6 +52,9 @@ const { highlightPage } = Astro.props
 		justify-content: space-between;
 		align-items: center;
 		gap: .3em;
+
+        /* Always the solution */
+        z-index: 9999;
 	}
 	@media (max-width: 500px) {
 		nav {

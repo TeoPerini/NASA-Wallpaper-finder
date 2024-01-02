@@ -5,8 +5,88 @@ enum Page {
     APOD = "APOD",
     MRP  = "MRP"
 }
+
+const API_KEY:string = "DEMO_KEY"
+
+/**
+ * @enum
+ */
+const PerseveranceCameras = Object.freeze({
+    EDL_RUCAM: "Rover Up-Look Camera",
+    EDL_DDCAM: "Descent Stage Down-Look Camera",
+    EDL_PUCAM1: "Parachute Up-Look Camera A",
+    EDL_PUCAM2: "Parachute Up-Look Camera B",
+
+    NAVCAM_LEFT: "Navigation Camera - Left",
+    NAVCAM_RIGHT: "Navigation Camera - Right",
+
+    MCZ_RIGHT: "Mast Camera Zoom - Right",
+    MCZ_LEFT: "Mast Camera Zoom - Left",
+
+    FRONT_HAZCAM_LEFT_A: "Front Hazard Avoidance Camera - Left",
+    FRONT_HAZCAM_RIGHT_A: "Front Hazard Avoidance Camera - Right",
+
+    REAR_HAZCAM_LEFT: "Rear Hazard Avoidance Camera - Left",
+    REAR_HAZCAM_RIGHT: "Rear Hazard Avoidance Camera - Right",
+
+    SKYCAM: "MEDA Skycam",
+    SHERLOC_WATSON: "SHERLOC WATSON Camera",
+})
+
+interface PerseveranceCamera {
+    name: string,
+    full_name: string
+}
+interface PerseveranceData {
+    id: number,
+    name: string,
+    landing_date: string,
+    launch_date: string,
+    status: string,
+
+    max_sol: number,
+    max_date: string,
+
+    total_photos: string,
+    cameras: [PerseveranceCamera]
+}
+
+const perseveranceData: PerseveranceData = {}
+
+
+async function fetchFromMRP(URL: string): Promise<APODResponse | null> {
+	const res_blob = await fetch(URL)
+
+    requestState.limit = res_blob.headers.get("x-ratelimit-limit")
+    requestState.remaining = res_blob.headers.get("x-ratelimit-remaining")
+    console.info(`Requested image from APOD, limit [${requestState.remaining}/${requestState.limit}]`)
+
+	const res_json = await res_blob.json()
+	if(res_json.error != null) {
+		console.error(`Error requesting to APOD API with url "${URL}"\nmessage: `, res_json.error.message)
+		return null
+	}
+
+	return res_json
+
 ---
 
 <Layout currentPage={Page.MRP}>
 	<main>mrp</main>
+
+    
 </Layout>
+
+<style>
+
+</style>
+
+<script defer define:vars={{API_KEY, PerseveranceCameras}}>
+
+function fetchFromMRP() {
+    const URL = `https://mars-photos.herokuapp.com/`
+}
+
+
+
+</script>

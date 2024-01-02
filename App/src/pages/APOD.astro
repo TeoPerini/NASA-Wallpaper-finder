@@ -1,7 +1,5 @@
 ---
 import Layout from '../layouts/Layout.astro';
-// import test_image from "../../public/test_image.jpg";
-// import { Image } from 'astro:assets';
 
 enum Page {
     HOME = "Home",
@@ -24,7 +22,7 @@ interface APODResponse {
     date: string;
     
     url: string;
-    hdurl: string;
+    hdurl?: string;
 
     media_type?: string;
     explanation: string;
@@ -42,60 +40,32 @@ interface APODRequests {
 }
 
 let requestState: APODRequests = {
-	limit: "-40",
-	remaining: "-35"
+	limit: "?",
+	remaining: "?"
 }
 
-async function fetchFromAPOD(URL: string, is_production: boolean): Promise<APODResponse | null> {
-	if(!is_production) return {
-		title: "Fullmoon",
-		date: `${TODAY_DATE}`,
-		copyright: "Not me",
-		explanation: "The moon is red :P",
-		url: "test_image.jpg",
-		hdurl: "test_image.jpg"
-	}
-
-
+async function fetchFromAPOD(URL: string): Promise<APODResponse | null> {
 	const res_blob = await fetch(URL)
 
-	if(res_blob.ok) {
-		const RATE_LIMIT = res_blob.headers.get("x-ratelimit-limit")
-		const RATE_LIMIT_REMAINING = res_blob.headers.get("x-ratelimit-remaining")
-
-		requestState.limit = RATE_LIMIT
-		requestState.remaining = RATE_LIMIT_REMAINING
- 
-		console.info(`Requested image from APOD, limit [${RATE_LIMIT_REMAINING}/${RATE_LIMIT}]`)
-	}
+    requestState.limit = res_blob.headers.get("x-ratelimit-limit")
+    requestState.remaining = res_blob.headers.get("x-ratelimit-remaining")
+    console.info(`Requested image from APOD, limit [${requestState.remaining}/${requestState.limit}]`)
 
 	const res_json = await res_blob.json()
-
 	if(res_json.error != null) {
 		console.error(`Error requesting to APOD API with url "${URL}"\nmessage: `, res_json.error.message)
-		// window.alert(`Error requesting to APOD API with url "${URL}"\nmessage: ${res_json.error.message}`)
 		return null
 	}
 
-
-	const RESPONSE = res_json
-	// console.table(RESPONSE)
-
-	return RESPONSE
+	return res_json
 }
 
-
 const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${formatDate(TODAY_DATE)}&thumbs=true`
-let server_response: APODResponse | null = await fetchFromAPOD(URL, false)
+let server_response: APODResponse | null = await fetchFromAPOD(URL)
 ---
 
 <Layout currentPage={Page.APOD}>
 	<nav>
-		{
-			server_response != null &&
-				<h2>{server_response?.title ?? "Could not load today image"}</h2>
-		}
-
 		<p id="state">{requestState.remaining ?? "?"}/{requestState.limit ?? "?"}</p>
 		<input type="date" id="input_date" min="1995-06-16" value={formatDate(TODAY_DATE)} max={formatDate(TODAY_DATE)}>
 		<button id="button_load">Load image</button>
@@ -103,19 +73,16 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL, false)
 	</nav>
 
 	<article>
-		<!-- {server_response.hdurl} -->
-		<img id="image" class="error" src=".jpg" alt={server_response?.title ?? "Couldn't load image"} onerror="this.onerror=null;this.src='imagefound.gif';" onload="">
-		{
-			server_response != null &&
-				<p>Explanation: {server_response!.explanation}</p>
-				<p>Copyright: {server_response!.copyright}</p>
-		}
+		<img id="image" class="loading" src={server_response?.hdurl ?? server_response?.url ?? "not_found.jpg"} alt={server_response?.title ?? "Couldn't load image"}>
+        <p id="title">{server_response?.title != null ? `<b>Title:</b> ${server_response.title}` : ""}</p>
+        <p id="explanation">{server_response?.explanation != null ? `<b>Explanation:</b> ${server_response.explanation}` : ""}</p>
+        <p id="copyright">{server_response?.copyright != null ? `<b>Copyright:</b> ${server_response.copyright}` : ""}</p>
 	</article>
 </Layout>
 
 <style>
 	nav {
-		margin: .5em 1em;
+		margin: .5em 1em .8em 1em;
 		height: 2.2em;
 
 		display: flex;
@@ -125,14 +92,6 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL, false)
 		gap: .5rem;
 	}
 	
-	nav > h2 {
-		margin: .3em 1em;
-
-		white-space: nowrap;
-
-		flex-basis: 100%;
-	}
-
 	nav > p {
 		/* Import style from button */
 		padding: 0.3em .5em;
@@ -145,168 +104,263 @@ let server_response: APODResponse | null = await fetchFromAPOD(URL, false)
 		border-radius: 1rem;
 	}
 
+    nav > p.depleted {
+		color: var(--tint-error-text);
+		border: .1em solid var(--tint-error-border);
+        background-color: var(--tint-error-thin);
+    }
+
+    article {
+        position: relative;
+    }
+
 	img {
+        position: relative;
 		display: inline-block;
-		width: calc(100% - 2em);
-		margin: 0 1em;
+
+        max-width: calc(100% - 2em);
+        max-height: calc(100vh - (2em) - (.5em + 2.2em + .8em) - 2em);
+
+        margin: 0 1em;
 
 		border: .1em solid var(--fg-primary);
 		border-radius: 1em;
+        
+        left: calc(50% - .5em);
+        transform: translateX(calc(-50% - .5em));
 
 		object-fit: contain;
 	}
 
 	img.error {
+		max-width: calc(100% - 4em);
 		padding: 1em;
-		background-color: red;
+
+		background-color: var(--tint-error);
 		opacity: 100%;
 	}
 
 	img.loading {
 		position: relative;
 
+		max-width: calc(100% - 4em);
+		padding: 1em;
+
+		background-color: var(--text-loading);
+		opacity: 100%;
+
 		animation-name: breathe;
-		animation-duration: 3s;
-		animation-timing-function: cubic-bezier(.4,.85,.63,.14);
+		animation-duration: 2s;
+		animation-timing-function: linear;
 		animation-iteration-count: infinite;
 		animation-direction: alternate-reverse;
 	}
 
+    article > p {
+        margin: 1em 1em;
+    }
+    article > p > b {
+        font-weight: bold;
+    }
+
 	@keyframes breathe {
 		from {
-			filter: grayscale(0);
+			filter: grayscale(.2);
 		}
 
 		to {
-			filter: grayscale(1);
+			filter: grayscale(.8);
 		}
 	}
 </style>
 
 <script defer define:vars={{TODAY_DATE, API_KEY, server_response, requestState}}>
+    const EL_INPUT_DATE = document.getElementById("input_date");
+    const EL_BUTTON_LOAD = document.getElementById("button_load");
+    const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
+    const EL_REQUEST_STATE_P = document.getElementById("state");
 
-const EL_INPUT_DATE = document.getElementById("input_date");
-const EL_BUTTON_LOAD = document.getElementById("button_load");
-const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
-const EL_REQUEST_STATE_P = document.getElementById("state");
-const EL_IMAGE = document.getElementById("image");
+    const EL_IMAGE = document.getElementById("image");
+    EL_IMAGE.onload = () => {
+        EL_IMAGE.classList.remove("loading")
+    }
 
-/**
- * @type {APODResponse | null}
- */
-let loaded_response = null
-updateView(server_response)
+    const EL_TITLE_P = document.getElementById("title")
+    const EL_EXPLANATION_P = document.getElementById("explanation")
+    const EL_COPYRIGHT_P = document.getElementById("copyright")
 
-/**
- * @param {Date} date 
- * @returns {string}
- */
-function formatDate(date) {
-	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-}
+    /**
+     * @param {APODResponse | null} response 
+     */
+    function updateView(response) {
+        console.log(`Updating view with: ${JSON.stringify(response)}`)
 
-EL_BUTTON_LOAD.onclick = (_) => preventSpam(loadImage())
-async function loadImage() {
-	const DATE = formatDate(new Date(EL_INPUT_DATE.value))
-	const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${DATE}&thumbs=true`
-	const RESPONSE = await fetchFromAPOD(URL)
+        EL_REQUEST_STATE_P.innerText = `${requestState.remaining}/${requestState.limit}`
+        if(requestState.remaining <= 0) {
+            console.error("Depleted requests, disabling buttons")
 
-	updateView(RESPONSE)
-}
+            EL_BUTTON_LOAD.setAttribute("disabled", "")
+            EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
+            EL_INPUT_DATE.setAttribute("disabled", "")
+            
+            EL_IMAGE.classList.add("error")
+            EL_REQUEST_STATE_P.classList.add("depleted")
+
+            setTimeout(() => {
+                window.alert("Depleted requests to API, retry in a bit :P")
+            }, 1000)
+        } else {
+            console.info("Undepleted requests?, enabling buttons")
+            EL_BUTTON_LOAD.removeAttribute("disabled")
+            EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
+            EL_INPUT_DATE.removeAttribute("disabled")
+            
+            EL_REQUEST_STATE_P.classList.remove("depleted")
+        }
+
+        EL_IMAGE.onerror = () => {
+            console.error("Error loading image")
+            EL_IMAGE.classList.remove("loading")
+            EL_IMAGE.classList.add("error")
+            EL_IMAGE.onerror = null
+        }
+
+        if(response == null) {
+            EL_TITLE_P.innerHTML = ""
+            EL_EXPLANATION_P.innerHTML = ""
+            EL_COPYRIGHT_P.innerHTML = ""
+            return
+        }
+
+        if(response.hdurl != null) {
+            EL_IMAGE.src = response.hdurl
+
+        } else if(response.thumbnail_url != null) {
+            EL_IMAGE.src = response.thumbnail_url
+
+        } else if(response.url != null) {
+            EL_IMAGE.src = response.url
+
+        } else {
+            console.error("???? both hdurl and url are null ", response)
+        }
+
+        EL_IMAGE.alt = response.title
+        EL_TITLE_P.innerHTML = `<b>Title</b>: ${response.title}`
+
+        if(response.explanation != null)
+            EL_EXPLANATION_P.innerHTML = `<b>Explanation</b>: ${response.explanation}`
+
+        if(response.copyright != null)
+            EL_COPYRIGHT_P.innerHTML = `<b>Copyright</b>: ${response.copyright}`
+
+        EL_INPUT_DATE.setAttribute("value", response.date)
+        loaded_response = response
+    }
+
+    /**
+     * @type {APODResponse | null}
+     */
+    let loaded_response = null
+    updateView(server_response)
+
+    /**
+     * @param {Date} date 
+     * @returns {string}
+     */
+    function formatDate(date) {
+        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    }
+
+    EL_BUTTON_LOAD.onclick = (_) => preventSpam(loadImage())
+    async function loadImage() {
+        const DATE = formatDate(new Date(EL_INPUT_DATE.value))
+        const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${DATE}&thumbs=true`
+        const RESPONSE = await fetchFromAPOD(URL)
+
+        updateView(RESPONSE)
+    }
 
 
-EL_BUTTON_LOAD_RANDOM.onclick = (_) => preventSpam(loadRandomImage())
-async function loadRandomImage() {
-	const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&count=1&thumbs=true`
-	let RESPONSE = await fetchFromAPOD(URL)
+    EL_BUTTON_LOAD_RANDOM.onclick = (_) => preventSpam(loadRandomImage())
+    async function loadRandomImage() {
+        const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&count=1&thumbs=true`
+        let RESPONSE = await fetchFromAPOD(URL)
 
-	RESPONSE = RESPONSE == null ? null : RESPONSE[0]
-	updateView(RESPONSE)
-}
+        RESPONSE = RESPONSE == null ? null : RESPONSE[0]
+        updateView(RESPONSE)
+    }
 
-/**
- * @param {APODResponse | null} response 
- */
-function updateView(response) {
-	console.table(response)
-	if(response == null) {
-		return
-	}
+    /**
+     * 
+     * @param {URL} URL 
+     * @returns {APODResponse | null}
+     */
+    async function fetchFromAPOD(URL) {
+        const res_blob = await fetch(URL)
 
-	EL_REQUEST_STATE_P.innerText = `${requestState.remaining}/${requestState.limit}`
+        requestState.limit = res_blob.headers.get("x-ratelimit-limit")
+        requestState.remaining = res_blob.headers.get("x-ratelimit-remaining")
+        console.info(`Requested image from APOD, limit [${requestState.remaining}/${requestState.limit}]`)
 
-	EL_IMAGE.src = response.url
-	EL_IMAGE.alt = response.title
+        const res_json = await res_blob.json()
+        if(res_json.error != null) {
+            console.error(`Error requesting to APOD API with url "${URL}"\nmessage: ${res_json.error.message}`)
+            window.alert(res_json.error.message)
+            return null
+        }
 
-	EL_INPUT_DATE.setAttribute("value", response.date)
-	loaded_response = response
-}
+        return res_json
+    }
 
-/**
- * 
- * @param {URL} URL 
- * @returns {APODResponse | null}
- */
-async function fetchFromAPOD(URL) {
-	const res_blob = await fetch(URL)
-	if(res_blob.ok) {
-		requestState.limit = res_blob.headers.get("x-ratelimit-limit")
-		requestState.remaining = res_blob.headers.get("x-ratelimit-remaining")
-		
-		console.info(`Requested image from APOD, limit [${requestState.remaining}/${requestState.limit}]`)
-	}
+    /**
+     * 
+     * @param {Promise<void>} image_loader 
+     */
+    function preventSpam(image_loader) {
+        EL_IMAGE.classList.remove("error")
+        EL_IMAGE.onerror = null
+        EL_IMAGE.src = ""
+        EL_IMAGE.alt = "Loading..."
 
-	const res_json = await res_blob.json()
-	if(res_json.error != null) {
-		const MSG = `Error requesting to APOD API with url "${URL}"\nmessage: ${res_json.error.message}`
-		console.error(MSG)
-		window.alert(MSG)
-		return null
-	}
+        console.log("Loading image, disabling buttons to avoid spam")
+        EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
+        EL_BUTTON_LOAD.setAttribute("disabled", "")
+        EL_INPUT_DATE.setAttribute("disabled", "")
+        EL_IMAGE.classList.add("loading")
 
-	return res_json
-}
+        image_loader.finally(_ => {
+            EL_IMAGE.classList.remove("loading")
 
-/**
- * 
- * @param {Promise<void>} image_loader 
- */
-function preventSpam(image_loader) {
-	EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
-	EL_BUTTON_LOAD.setAttribute("disabled", "")
+            if(requestState.remaining <= 0) return
 
-	EL_IMAGE.classList.add("loading")
-	
-	// 	EL_BUTTON_DOWNLOAD.removeAttribute("disabled")
-	// 	EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
-	// 	EL_BUTTON_LOAD.removeAttribute("disabled")
-	// }
+            console.log("Image loaded, enabling buttons")
+            EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
+            EL_BUTTON_LOAD.removeAttribute("disabled")
+            EL_INPUT_DATE.removeAttribute("disabled")
+        })
+    }
 
-	image_loader
-		.finally(_ => {
-			EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
-			EL_BUTTON_LOAD.removeAttribute("disabled")
-		})
-}
 
-/**
- * @typedef {Object} APODResponse
- * @prop {any} resource
- * @prop {any} concept_tags
- * 
- * @prop {string?} title
- * @prop {string?} date
- *
- * @prop {string?} url
- * @prop {string?} hdurl
- * 
- * @prop {string?} media_type
- * @prop {string?} explanation
- * 
- * @prop {any} concepts
- * @prop {any} thumbnail_url
- * 
- * @prop {string?} copyright
- * @prop {string?} service_version
- */
+
+    /**
+     * @typedef {Object} APODResponse
+     * @prop {any} resource
+     * @prop {any} concept_tags
+     * 
+     * @prop {string?} title
+     * @prop {string?} date
+     *
+     * @prop {string?} url
+     * @prop {string?} hdurl
+     * 
+     * @prop {string?} media_type
+     * @prop {string?} explanation
+     * 
+     * @prop {any} concepts
+     * @prop {any} thumbnail_url
+     * 
+     * @prop {string?} copyright
+     * @prop {string?} service_version
+     */
 </script>

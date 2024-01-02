@@ -76,7 +76,16 @@ button:hover, input:hover {
 
 button:active, input:active {
 	border: .1em solid var(--tint-primary);
-	background-color: rgba(252, 254, 189, var(--_material-thin));
+	background-color: var(--tint-primary-thin);
+}
+
+button:disabled, button[disabled],
+input:disabled, input[disabled] {
+    color: var(--fg-text-secondary);
+	border: .1em solid var(--fg-secondary-thin);
+	background-color: var(--bg-body-secondary-thin);
+
+    cursor: not-allowed;
 }
 
 
