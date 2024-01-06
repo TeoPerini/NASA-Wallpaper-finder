@@ -11,7 +11,7 @@ export class NASA_API {
 	private constructor() { }
 
 	getRequestString() {
-		return `${NASA_API.shared.requestState.remaining}/${NASA_API.shared.requestState.limit}`
+		return `${this.requestState.remaining}/${this.requestState.limit}`
 	}
 
 	craftURL(callback: (api_key: string) => string): string {
@@ -28,11 +28,16 @@ export class NASA_API {
 		const res_json = await res_blob.json()
 		if(res_blob.ok) return res_json
 
-		if(res_json.error != undefined)
-			console.error(`Error requesting from NASA API with url "${URL}"\nmessage: ${res_json.error.message}`)
+		let error_message: string | null = res_json.error.message ?? res_json.msg
+		if(error_message != null) {
+			console.error(`Error requesting from NASA API with url "${URL}"\nmessage: ${error_message}`)
 
-		if(res_json.msg != undefined)
-			console.error(`Error requesting from NASA API with url "${URL}"\nmessage: ${res_json.msg}`)
+			if(error_message.startsWith("You have exceeded your rate limit."))
+				this.requestState.remaining = "0"
+
+		} else {
+			console.error(`Error requesting from NASA API with url "${URL}"`)
+		}
 
 		return null
 	}

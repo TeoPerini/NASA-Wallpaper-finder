@@ -12,25 +12,37 @@ const EL_TITLE_P = document.getElementById("title")!;
 const EL_EXPLANATION_P = document.getElementById("explanation")!;
 const EL_COPYRIGHT_P = document.getElementById("copyright")!;
 
+function setErrorToImage() {
+    console.warn("Erroring image")
+
+    EL_IMAGE.classList.remove("loading") 
+    EL_IMAGE.classList.add("error")
+
+    if (NASA_API.shared.requestState.remaining == "0") {
+        //@ts-ignore
+        EL_IMAGE.alt = "Depleted requests, retry later :P"
+
+    } else {
+        //@ts-ignore
+        EL_IMAGE.alt = "Unknown Error"
+    }
+}
 
 function updateView(response: APODResponse | null) {
-    console.info("Updating view")
-    console.table(JSON.stringify(response))
-
     EL_REQUEST_STATE_P.innerText = NASA_API.shared.getRequestString()
+
     if (NASA_API.shared.requestState.remaining == "0") {
-        console.error("Depleted requests, disabling buttons")
+        console.warn("Depleted requests: disabling buttons")
 
         EL_BUTTON_LOAD.setAttribute("disabled", "")
         EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
         EL_INPUT_DATE.setAttribute("disabled", "")
 
-        // EL_IMAGE.classList.add("error")
+        //@ts-ignore
+        EL_IMAGE.alt = "Depleted requests, retry later :P"
         EL_REQUEST_STATE_P.classList.add("depleted")
-        // setTimeout(() => window.alert("Depleted requests to API, retry in a bit :P"), 1000)
-    } else {
-        console.info("Undepleted requests?, enabling buttons")
 
+    } else {
         EL_BUTTON_LOAD.removeAttribute("disabled")
         EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
         EL_INPUT_DATE.removeAttribute("disabled")
@@ -38,54 +50,35 @@ function updateView(response: APODResponse | null) {
         EL_REQUEST_STATE_P.classList.remove("depleted")
     }
 
-    EL_IMAGE.onerror = () => {
-        console.error("Error loading image")
-        EL_IMAGE.classList.remove("loading")
-        EL_IMAGE.classList.add("error")
-        EL_IMAGE.onerror = null
-    }
+    //@ts-ignore
+    EL_IMAGE.src = response?.hdurl ?? response?.thumbnail_url ?? response?.url ?? ""
 
-    if (response == null) {
+    //@ts-ignore
+    if (response == null || EL_IMAGE.src == "") {
+        if (response == null)
+            console.warn("While updating view found response null");
+        else 
+            console.warn("While updating view found src null");
+
         EL_TITLE_P.innerHTML = ""
         EL_EXPLANATION_P.innerHTML = ""
         EL_COPYRIGHT_P.innerHTML = ""
+
+        setErrorToImage()
         return
-    }
-
-
-    if (response.hdurl != null) {
-        //@ts-ignore
-        EL_IMAGE.src = response.hdurl
-
-    } else if (response.thumbnail_url != null) {
-        //@ts-ignore
-        EL_IMAGE.src = response.thumbnail_url
-
-    } else if (response.url != null) {
-        //@ts-ignore
-        EL_IMAGE.src = response.url
-
-    } else {
-        console.error("???? both hdurl, thumbnail_url and url are null", response)
     }
 
     //@ts-ignore
     EL_IMAGE.alt = response.title
     EL_TITLE_P.innerHTML = `<b>Title</b>: ${response.title}`
+    EL_INPUT_DATE.setAttribute("value", response.date!)
 
     if (response.explanation != null)
         EL_EXPLANATION_P.innerHTML = `<b>Explanation</b>: ${response.explanation}`
 
     if (response.copyright != null)
         EL_COPYRIGHT_P.innerHTML = `<b>Copyright</b>: ${response.copyright}`
-
-    if(response.date != undefined)
-        EL_INPUT_DATE.setAttribute("value", response.date)
-
-    loaded_response = response
 }
-
-let loaded_response: APODResponse | null = null
 
 EL_BUTTON_LOAD.onclick = (_) => preventSpam(loadImage())
 async function loadImage() {
@@ -103,31 +96,32 @@ async function loadRandomImage() {
     const URL = NASA_API.shared.craftURL((key: string) => `https://api.nasa.gov/planetary/apod?api_key=${key}&count=1&thumbs=true`)
     let RESPONSE = await NASA_API.shared.fetchFromNASA(URL)
 
+    //@ts-ignore
     RESPONSE = RESPONSE == null ? null : RESPONSE[0]
     updateView(RESPONSE)
 }
 
 function preventSpam(image_loader: Promise<void>) {
+    console.log("Requested to API: loading data, disabling buttons")
+
+    EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
+    EL_BUTTON_LOAD.setAttribute("disabled", "")
+    EL_INPUT_DATE.setAttribute("disabled", "")
+
     EL_IMAGE.classList.remove("error")
-    EL_IMAGE.onerror = null
-    
+    EL_IMAGE.classList.add("loading")
+
     //@ts-ignore
     EL_IMAGE.src = ""
     //@ts-ignore
     EL_IMAGE.alt = "Loading..."
-
-    console.log("Loading image, disabling buttons to avoid spam")
-    EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
-    EL_BUTTON_LOAD.setAttribute("disabled", "")
-    EL_INPUT_DATE.setAttribute("disabled", "")
-    EL_IMAGE.classList.add("loading")
 
     image_loader.finally(() => {
         EL_IMAGE.classList.remove("loading")
 
         if (NASA_API.shared.requestState.remaining == "0") return
 
-        console.log("Image loaded, enabling buttons")
+        console.log("Finished request successfully: enabling buttons")
         EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
         EL_BUTTON_LOAD.removeAttribute("disabled")
         EL_INPUT_DATE.removeAttribute("disabled")

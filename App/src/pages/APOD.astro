@@ -2,19 +2,11 @@
 import Layout from '../layouts/Layout.astro';
 import { Page } from "../scripts/page_handler"
 
-import { NASA_API, type APODResponse } from '../scripts/NASA_API';
+import { NASA_API } from '../scripts/NASA_API';
 import { formatDate } from '../scripts/utils';
 
-const TODAY_DATE: Date = new Date(Date.now())
-const TODAY_DATE_FORM: string = formatDate(TODAY_DATE)
-
-const URL = NASA_API.shared.craftURL((api_key: string) => {
-    const date = formatDate(TODAY_DATE)
-    return `https://api.nasa.gov/planetary/apod?api_key=${api_key}&date=${date}&thumbs=true`
-})
-let res: APODResponse | null = await NASA_API.shared.fetchFromNASA(URL)
-let shared: NASA_API = NASA_API.shared
-console.table(res)
+const TODAY_DATE = new Date(Date.now())
+const TODAY_DATE_FORM = formatDate(TODAY_DATE)
 ---
 
 <Layout currentPage={Page.APOD}>
@@ -26,10 +18,10 @@ console.table(res)
 	</nav>
 
 	<article>
-		<img id="image" class="loading" src={res?.hdurl ?? res?.thumbnail_url ?? res?.url ?? "nothing.png"} alt={res?.title ?? "error"}>
-        <p id="title"       set:html={res?.title != null ? `<b>Title</b>: ${res?.title}` : "" } />
-        <p id="explanation" set:html={res?.explanation != null ? `<b>Explanation</b>: ${res?.explanation}` : "" } />
-        <p id="copyright"   set:html={res?.copyright != null ? `<b>Copyright</b>: ${res?.copyright}` : "" } />
+		<img id="image" class="loading" src="" alt="To start using the API press on the buttons at the top ^">
+        <p id="title"></p>
+        <p id="explanation"></p>
+        <p id="copyright"></p>
 	</article>
 </Layout>
 
@@ -58,7 +50,6 @@ console.table(res)
 	}
 
     nav > p.depleted {
-		color: var(--tint-error-text);
 		border: .1em solid var(--tint-error-border);
         background-color: var(--tint-error-thin);
     }
@@ -89,22 +80,19 @@ console.table(res)
 		max-width: calc(100% - 4em);
 		padding: 1em;
 
-		color: var(--tint-error-text);
 		border: .1em solid var(--tint-error-border);
         background-color: var(--tint-error-thin);
 	}
 
 	img.loading {
-		position: relative;
-
 		max-width: calc(100% - 4em);
 		padding: 1em;
 
-		background-color: var(--text-loading);
-		opacity: 100%;
+		border: .1em solid var(--tint-loading-border);
+        background-color: var(--tint-loading-thin);
 
 		animation-name: breathe;
-		animation-duration: 2s;
+		animation-duration: 2.5s;
 		animation-timing-function: linear;
 		animation-iteration-count: infinite;
 		animation-direction: alternate-reverse;
@@ -118,46 +106,32 @@ console.table(res)
     }
 
 	@keyframes breathe {
-		from {
-			filter: grayscale(.2);
+		0% {
+    		border: .1em solid var(--tint-loading-border);
+			/* filter: grayscale(.5); */
 		}
 
-		to {
-			filter: grayscale(.8);
+		50% {
+    		border: .1em solid var(--fg-text-primary);
+			/* filter: grayscale(1); */
+		}
+
+		100% {
+    		border: .1em solid var(--tint-loading-thin);
+			/* filter: grayscale(1); */
 		}
 	}
 </style>
 
 <script src="../scripts/APOD.ts"></script>
-<script defer define:vars={{res, shared}}>
+<script defer>
+    const EL_BUTTON_LOAD = document.getElementById("button_load");
+    const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
+    const EL_INPUT_DATE = document.getElementById("input_date");
+    const EL_REQUEST_STATE_P = document.getElementById("state");
+
     const EL_IMAGE = document.getElementById("image");
-    EL_IMAGE.onload = () => { EL_IMAGE.classList.remove("loading") }
-    EL_IMAGE.onerror = () => {
-        console.error("Error loading image")
-
+    EL_IMAGE.onload = () => {
         EL_IMAGE.classList.remove("loading")
-        EL_IMAGE.classList.add("error")
-
-        if (shared.requestState.remaining == "0")
-            EL_IMAGE.alt = "Depleted requests, retry later :P"
-
-        EL_IMAGE.onerror = null
-    }
-
-    if (shared.requestState.remaining == "0") {
-        console.error("Depleted requests, disabling buttons")
-
-
-        const EL_BUTTON_LOAD = document.getElementById("button_load");
-        EL_BUTTON_LOAD.setAttribute("disabled", "")
-
-        const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
-        EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
-
-        const EL_INPUT_DATE = document.getElementById("input_date");
-        EL_INPUT_DATE.setAttribute("disabled", "")
-
-        const EL_REQUEST_STATE_P = document.getElementById("state");
-        EL_REQUEST_STATE_P.classList.add("depleted")
     }
 </script>

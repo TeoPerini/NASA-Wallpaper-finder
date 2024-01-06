@@ -27,6 +27,8 @@
 	--tint-error-border:	hsl(0, 60%, 65%);
 
 	--tint-loading:			rgb(0, 140, 140);
+	--tint-loading-thin:	rgba(0, 140, 140, var(--_material-thin));
+	--tint-loading-border:	hsl(180, 60%, 27%);
 
 
 	/* ? MATERIALS */
