@@ -3,20 +3,18 @@ import Layout from '../layouts/Layout.astro';
 import { Page } from "../scripts/page_handler"
 
 import { NASA_API, type APODResponse } from '../scripts/NASA_API';
-
+import { formatDate } from '../scripts/utils';
 
 const TODAY_DATE: Date = new Date(Date.now())
 const TODAY_DATE_FORM: string = formatDate(TODAY_DATE)
 
-function formatDate(date: Date): string {
-	return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-}
-
-const URL = NASA_API.shared.craftURL((api_key) => {
+const URL = NASA_API.shared.craftURL((api_key: string) => {
     const date = formatDate(TODAY_DATE)
     return `https://api.nasa.gov/planetary/apod?api_key=${api_key}&date=${date}&thumbs=true`
 })
-let server_response: APODResponse | null = await NASA_API.shared.fetchFromNASA(URL)
+let res: APODResponse | null = await NASA_API.shared.fetchFromNASA(URL)
+let shared: NASA_API = NASA_API.shared
+console.table(res)
 ---
 
 <Layout currentPage={Page.APOD}>
@@ -28,10 +26,10 @@ let server_response: APODResponse | null = await NASA_API.shared.fetchFromNASA(U
 	</nav>
 
 	<article>
-		<img id="image" class="loading" src="" alt="">
-        <p id="title"></p>
-        <p id="explanation"></p>
-        <p id="copyright"></p>
+		<img id="image" class="loading" src={res?.hdurl ?? res?.thumbnail_url ?? res?.url ?? "nothing.png"} alt={res?.title ?? "error"}>
+        <p id="title"       set:html={res?.title != null ? `<b>Title</b>: ${res?.title}` : "" } />
+        <p id="explanation" set:html={res?.explanation != null ? `<b>Explanation</b>: ${res?.explanation}` : "" } />
+        <p id="copyright"   set:html={res?.copyright != null ? `<b>Copyright</b>: ${res?.copyright}` : "" } />
 	</article>
 </Layout>
 
@@ -91,8 +89,9 @@ let server_response: APODResponse | null = await NASA_API.shared.fetchFromNASA(U
 		max-width: calc(100% - 4em);
 		padding: 1em;
 
-		background-color: var(--tint-error);
-		opacity: 100%;
+		color: var(--tint-error-text);
+		border: .1em solid var(--tint-error-border);
+        background-color: var(--tint-error-thin);
 	}
 
 	img.loading {
@@ -129,188 +128,36 @@ let server_response: APODResponse | null = await NASA_API.shared.fetchFromNASA(U
 	}
 </style>
 
-<script defer define:vars={server_response}>
-    import { formatDate } from "../scripts/utils"
-    import NASA_API from "../scripts/NASA_API"
-
-    const EL_INPUT_DATE = document.getElementById("input_date");
-    const EL_BUTTON_LOAD = document.getElementById("button_load");
-    const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
-    const EL_REQUEST_STATE_P = document.getElementById("state");
-
+<script src="../scripts/APOD.ts"></script>
+<script defer define:vars={{res, shared}}>
     const EL_IMAGE = document.getElementById("image");
-    EL_IMAGE.onload = () => {
+    EL_IMAGE.onload = () => { EL_IMAGE.classList.remove("loading") }
+    EL_IMAGE.onerror = () => {
+        console.error("Error loading image")
+
         EL_IMAGE.classList.remove("loading")
-    }
+        EL_IMAGE.classList.add("error")
 
-    const EL_TITLE_P = document.getElementById("title")
-    const EL_EXPLANATION_P = document.getElementById("explanation")
-    const EL_COPYRIGHT_P = document.getElementById("copyright")
+        if (shared.requestState.remaining == "0")
+            EL_IMAGE.alt = "Depleted requests, retry later :P"
 
-    /**
-     * @param {APODResponse | null} response 
-     */
-    function updateView(response) {
-        console.log(`Updating view with: ${JSON.stringify(response)}`)
-
-        EL_REQUEST_STATE_P.innerText = NASA_API.shared.getRequestString()
-        if(NASA_API.shared.requestState.remaining <= 0) {
-            console.error("Depleted requests, disabling buttons")
-
-            EL_BUTTON_LOAD.setAttribute("disabled", "")
-            EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
-            EL_INPUT_DATE.setAttribute("disabled", "")
-            
-            EL_IMAGE.classList.add("error")
-            EL_REQUEST_STATE_P.classList.add("depleted")
-
-            setTimeout(() => window.alert("Depleted requests to API, retry in a bit :P"), 1000)
-        } else {
-            console.info("Undepleted requests?, enabling buttons")
-            EL_BUTTON_LOAD.removeAttribute("disabled")
-            EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
-            EL_INPUT_DATE.removeAttribute("disabled")
-            
-            EL_REQUEST_STATE_P.classList.remove("depleted")
-        }
-
-        EL_IMAGE.onerror = () => {
-            console.error("Error loading image")
-            EL_IMAGE.classList.remove("loading")
-            EL_IMAGE.classList.add("error")
-            EL_IMAGE.onerror = null
-        }
-
-        if(response == null) {
-            EL_TITLE_P.innerHTML = ""
-            EL_EXPLANATION_P.innerHTML = ""
-            EL_COPYRIGHT_P.innerHTML = ""
-            return
-        }
-
-        
-        if(response.hdurl != null) {
-            EL_IMAGE.src = response.hdurl
-
-        } else if(response.thumbnail_url != null) {
-            EL_IMAGE.src = response.thumbnail_url
-
-        } else if(response.url != null) {
-            EL_IMAGE.src = response.url
-
-        } else {
-            console.error("???? both hdurl, thumbnail_url and url are null", response)
-        }
-
-        EL_IMAGE.alt = response.title
-        EL_TITLE_P.innerHTML = `<b>Title</b>: ${response.title}`
-
-        if(response.explanation != null)
-            EL_EXPLANATION_P.innerHTML = `<b>Explanation</b>: ${response.explanation}`
-
-        if(response.copyright != null)
-            EL_COPYRIGHT_P.innerHTML = `<b>Copyright</b>: ${response.copyright}`
-
-        EL_INPUT_DATE.setAttribute("value", response.date)
-        loaded_response = response
-    }
-
-    /**
-     * @type {APODResponse | null}
-     */
-    let loaded_response = null
-    updateView(server_response)
-
-
-    EL_BUTTON_LOAD.onclick = (_) => preventSpam(loadImage())
-    async function loadImage() {
-        const DATE = formatDate(new Date(EL_INPUT_DATE.value))
-        const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&date=${DATE}&thumbs=true`
-        const RESPONSE = await fetchFromAPOD(URL)
-
-        updateView(RESPONSE)
-    }
-
-
-    EL_BUTTON_LOAD_RANDOM.onclick = (_) => preventSpam(loadRandomImage())
-    async function loadRandomImage() {
-        const URL = `https://api.nasa.gov/planetary/apod?api_key=${API_KEY}&count=1&thumbs=true`
-        let RESPONSE = await fetchFromAPOD(URL)
-
-        RESPONSE = RESPONSE == null ? null : RESPONSE[0]
-        updateView(RESPONSE)
-    }
-
-    /**
-     * 
-     * @param {URL} URL 
-     * @returns {APODResponse | null}
-     */
-    async function fetchFromAPOD(URL) {
-        const res_blob = await fetch(URL)
-
-        requestState.limit = res_blob.headers.get("x-ratelimit-limit")
-        requestState.remaining = res_blob.headers.get("x-ratelimit-remaining")
-        console.info(`Requested image from APOD, limit [${requestState.remaining}/${requestState.limit}]`)
-
-        const res_json = await res_blob.json()
-        if(res_json.error != null) {
-            console.error(`Error requesting to APOD API with url "${URL}"\nmessage: ${res_json.error.message}`)
-            window.alert(res_json.error.message)
-            return null
-        }
-
-        return res_json
-    }
-
-    /**
-     * 
-     * @param {Promise<void>} image_loader 
-     */
-    function preventSpam(image_loader) {
-        EL_IMAGE.classList.remove("error")
         EL_IMAGE.onerror = null
-        EL_IMAGE.src = ""
-        EL_IMAGE.alt = "Loading..."
-
-        console.log("Loading image, disabling buttons to avoid spam")
-        EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
-        EL_BUTTON_LOAD.setAttribute("disabled", "")
-        EL_INPUT_DATE.setAttribute("disabled", "")
-        EL_IMAGE.classList.add("loading")
-
-        image_loader.finally(_ => {
-            EL_IMAGE.classList.remove("loading")
-
-            if(requestState.remaining <= 0) return
-
-            console.log("Image loaded, enabling buttons")
-            EL_BUTTON_LOAD_RANDOM.removeAttribute("disabled")
-            EL_BUTTON_LOAD.removeAttribute("disabled")
-            EL_INPUT_DATE.removeAttribute("disabled")
-        })
     }
 
+    if (shared.requestState.remaining == "0") {
+        console.error("Depleted requests, disabling buttons")
 
 
-    /**
-     * @typedef {Object} APODResponse
-     * @prop {any} resource
-     * @prop {any} concept_tags
-     * 
-     * @prop {string?} title
-     * @prop {string?} date
-     *
-     * @prop {string?} url
-     * @prop {string?} hdurl
-     * 
-     * @prop {string?} media_type
-     * @prop {string?} explanation
-     * 
-     * @prop {any} concepts
-     * @prop {any} thumbnail_url
-     * 
-     * @prop {string?} copyright
-     * @prop {string?} service_version
-     */
+        const EL_BUTTON_LOAD = document.getElementById("button_load");
+        EL_BUTTON_LOAD.setAttribute("disabled", "")
+
+        const EL_BUTTON_LOAD_RANDOM = document.getElementById("button_load_random");
+        EL_BUTTON_LOAD_RANDOM.setAttribute("disabled", "")
+
+        const EL_INPUT_DATE = document.getElementById("input_date");
+        EL_INPUT_DATE.setAttribute("disabled", "")
+
+        const EL_REQUEST_STATE_P = document.getElementById("state");
+        EL_REQUEST_STATE_P.classList.add("depleted")
+    }
 </script>
